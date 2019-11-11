@@ -1,0 +1,7 @@
+{:collection/users[{:user "User Name 1"
+                    :email "user1@email.com"}
+                   {:user "User Name 2"
+                    :email "user2@email.com"}]
+ :types/true true
+ :types/false false
+ :special/symbols [nil \newline \return \tab \space \u03BB]}

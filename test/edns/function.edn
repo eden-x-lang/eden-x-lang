@@ -1,0 +1,12 @@
+(defn user [name]
+  (let [home (str "/home/" name)]
+    {:home home
+     :privateKey (str home "/.ssh/id")
+     :publicKey (str home "/.ssh/id.pub")}))
+
+(def users ["alice"
+            "bob"
+            "charlie"
+            "david"])
+
+(mapv #(user %) users)
