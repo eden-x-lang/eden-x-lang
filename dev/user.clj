@@ -22,8 +22,7 @@
 
 (defn env [x]
   (when (local? *base-path*)
-    (System/getenv x)))
-
+    (System/getenv (name x))))
 
 (defn extract-base-path [f]
   (if (local? f)
