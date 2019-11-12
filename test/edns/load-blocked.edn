@@ -1,0 +1,2 @@
+{:local-end (load-file "./env.edn")
+ :remote-env (load-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/env.edn")}

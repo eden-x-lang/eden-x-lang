@@ -1,5 +1,8 @@
 (let [b 5
       from-def (load-file "./def-a.edn")
-      upper-def (load-file "../other-def.edn")]
+      upper-def (load-file "../other-def.edn")
+      simply-web (load-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/def-a.edn"
+                            "sha256:e7f6c011776e8db7cd330b54174fd76f7d0216b612387a5ffcfb81e6f0919683")]
   {:my-value (+ from-def b)
-   :other-def (* 2 upper-def)})
+   :other-def (* 2 upper-def)
+   :online simply-web})
