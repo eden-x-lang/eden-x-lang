@@ -11,6 +11,10 @@
 
 (def ^:dynamic *base-path* "")
 
+(def ^:dynamic *running-file* "")
+
+(def ^:dynamic *running-file-absolute* "")
+
 (defn local? [f]
   (try
     (io/as-url f)
@@ -21,8 +25,13 @@
              false)))))
 
 (defn env [x]
-  (when (local? *base-path*)
-    (System/getenv (name x))))
+  (if (local? *base-path*)
+    (System/getenv (name x))
+    (do (println "\nWarning!! Illegal operation from remote file")
+        (println " - Path:" *running-file-absolute*)
+        (println " - Using `env` from a remotely hosted file could lead to a")
+        (println "   malicious script stealing secrets from your system. Therefore")
+        (println "   `env` does not work here."))))
 
 (defn extract-base-path [f]
   (if (local? f)
@@ -47,16 +56,14 @@
    :bindings {'load-file load-file
               'env env}})
 
-(defn run-string
-  ([s]
-   (run-string s ""))
-  ([s base-path]
-   (binding [*base-path* base-path]
-     (sci/eval-string s (default-opts)))))
+(defn run-string [s]
+  (sci/eval-string s (default-opts)))
 
 (defn run-file-path [f]
-  (run-string (extract-file-content f)
-              (extract-base-path f)))
+  (binding [*base-path* (extract-base-path f)
+            *running-file* f
+            *running-file-absolute* (merge-path *base-path* f)]
+    (run-string (extract-file-content f))))
 
 (defn load-file
   ([file]
@@ -64,19 +71,20 @@
   ([file hash]
    (load-file file hash nil))
   ([file hash opts]
-   (let [absolute-path (merge-path *base-path* file)]
+   (let [new-absolute-path (merge-path *base-path* file)]
      (when (and (nil? hash)
-                (not (local? absolute-path)))
-       (do (println "\nWarning!! Loading and evaluating without freeze")
-           (println " - File:" absolute-path)
-           (println " - This is a potentially risky operation.")
-           (println " - Consider freezing this `load-file`")))
-     (let [out (run-file-path absolute-path)
+                (not (local? new-absolute-path)))
+       (do (println "\nWarning!! Remote file being loaded transitively without freeze")
+           (println " - Path:" new-absolute-path)
+           (println " - This is potentially a risky operation.")
+           (println " - Consider freezing this `load-file`")
+           (println " - Run `$ eden-x --freeze all your-file.edn`")))
+     (let [out (run-file-path new-absolute-path)
            sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
        (if hash
          (if (= hash sha)
            out
-           (throw (ex-info "Semantic mismatch of frozen hash." {:path absolute-path})))
+           (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
          out)))))
 
 
