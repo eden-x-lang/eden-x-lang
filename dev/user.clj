@@ -23,6 +23,15 @@
    :bindings {'load-file load-file
               'env env}})
 
+(defn local? [f]
+  (try
+    (io/as-url f)
+    false
+    (catch Throwable _
+      (try (-> f io/file .exists)
+           (catch Throwable _
+             false)))))
+
 (defn run-file-path [f]
   (let [c (-> f io/file slurp)
         r (binding [*base-path* (extract-path f)]
