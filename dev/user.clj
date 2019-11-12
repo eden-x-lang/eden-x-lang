@@ -1,4 +1,5 @@
 (ns user
+  (:refer-clojure :exclude [load-file])
   (:require [buddy.core.codecs :refer [bytes->hex]]
             [buddy.core.hash :as h]
             [clj-yaml.core :as y]
@@ -7,28 +8,29 @@
             [sci.core :as sci]
             [sci.impl.interpreter :as i]))
 
+(def ^:dynamic *base-path* "")
+
 (defn env [x]
   (System/getenv x))
 
 (defn extract-path [f]
   (-> f io/file .getParentFile .getAbsolutePath (str "/")))
 
-(declare eval-load-file)
+(declare load-file)
 
-(defn default-opts [f]
-  {:running-ctx {:base-path (extract-path f)}
-   :deny ['require]
-   :special-forms {'load-file eval-load-file}
-   :bindings {'env env}})
+(defn default-opts []
+  {:deny ['require]
+   :bindings {'load-file load-file
+              'env env}})
 
 (defn run-file-path [f]
   (let [c (-> f io/file slurp)
-        r (sci/eval-string c (default-opts f))]
+        r (binding [*base-path* (extract-path f)]
+            (sci/eval-string c (default-opts)))]
     r))
 
-(defn eval-load-file [{:keys [running-ctx] :as ctx} expr]
-  (let [file (second expr)]
-    (run-file-path (str (:base-path running-ctx) file))))
+(defn load-file [file]
+  (run-file-path (str *base-path* file)))
 
 (run-file-path "test/edns/load-file.edn")
 
@@ -38,7 +40,7 @@
 
 ;; json
 
-#_(j/write-value-as-string r)
+#_(j/write-value-as-string (run-file-path "test/edns/load-file.edn"))
 
 ;; yaml
 

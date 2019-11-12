@@ -1,7 +1,7 @@
-{:paths ["src" "sci/src"]
+{:paths ["src"]
 
  :deps {org.clojure/clojure     {:mvn/version "1.10.1"}
-        borkdude/edamame        {:mvn/version "0.0.8-alpha.4"}
+        borkdude/sci            {:mvn/version "0.0.11-alpha.7"}
         buddy/buddy-core        {:mvn/version "1.6.0"}
         metosin/jsonista        {:mvn/version "0.2.5"}
         clj-commons/clj-yaml    {:mvn/version "0.7.0"}}

@@ -2,4 +2,4 @@
       from-def (load-file "./def-a.edn")
       upper-def (load-file "../other-def.edn")]
   {:my-value (+ from-def b)
-   :other-def upper-def})
+   :other-def (* 2 upper-def)})
