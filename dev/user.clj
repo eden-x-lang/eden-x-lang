@@ -27,11 +27,12 @@
 (defn env [x]
   (if (local? *base-path*)
     (System/getenv (name x))
-    (do (println "\nWarning!! Illegal operation from remote file")
-        (println " - Path:" *running-file-absolute*)
-        (println " - Using `env` from a remotely hosted file could lead to a")
-        (println "   malicious script stealing secrets from your system. Therefore")
-        (println "   `env` does not work here."))))
+    (binding [*out* *err*]
+      (println "\nWarning!! Illegal operation from remote file")
+      (println " - Path:" *running-file-absolute*)
+      (println " - Using `env` from a remotely hosted file could lead to a")
+      (println "   malicious script stealing secrets from your system. Therefore")
+      (println "   `env` does not work here."))))
 
 (defn extract-base-path [f]
   (if (local? f)
@@ -74,11 +75,12 @@
    (let [new-absolute-path (merge-path *base-path* file)]
      (when (and (nil? hash)
                 (not (local? new-absolute-path)))
-       (do (println "\nWarning!! Remote file being loaded transitively without freeze")
-           (println " - Path:" new-absolute-path)
-           (println " - This is potentially a risky operation.")
-           (println " - Consider freezing this `load-file`")
-           (println " - Run `$ eden-x --freeze all your-file.edn`")))
+       (binding [*out* *err*]
+         (println "\nWarning!! Remote file being loaded transitively without freeze")
+         (println " - Path:" new-absolute-path)
+         (println " - This is potentially a risky operation.")
+         (println " - Consider freezing this `load-file`")
+         (println " - Run `$ eden-x --freeze all your-file.edn`")))
      (let [out (run-file-path new-absolute-path)
            sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
        (if hash
