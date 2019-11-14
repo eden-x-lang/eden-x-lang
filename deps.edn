@@ -8,7 +8,21 @@
         metosin/jsonista        {:mvn/version "0.2.5"}
         clj-commons/clj-yaml    {:mvn/version "0.7.0"}}
 
+ :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
+             "clojars" {:url "https://repo.clojars.org/"}}
+
  :aliases
  {:dev {:extra-paths ["dev" "test"]}
 
-  :test {:extra-paths ["test"]}}}
+  :test {:extra-paths ["test"]}
+
+  :uberjar {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.1"}}
+            :main-opts ["-m" "cambada.uberjar"
+                        "--main" "eden_x.main"
+                        "--app-version" "0.0.1-SNAPSHOT"]}
+
+  :native-image {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.1"}}
+                 :main-opts ["-m" "cambada.native-image"
+                             "--image-name" "eden-x"
+                             "--graalvm-opt" "H:IncludeResources=EDEN_X_VERSION"
+                             "--main" "eden_x.main"]}}}

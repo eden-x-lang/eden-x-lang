@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+NATIVE_IMAGE=`which native-image` || true
+
+if [ -z "$NATIVE_IMAGE" ]; then
+  if [ -z "$GRAALVM_HOME" ]; then
+      echo "Please set GRAALVM_HOME"
+      exit 1
+  fi
+
+  "$GRAALVM_HOME/bin/gu" install native-image || true
+
+  NATIVE_IMAGE="$GRAALVM_HOME/bin/native-image"
+fi
+
+clojure -A:native-image

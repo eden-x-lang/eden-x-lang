@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+  <modelVersion>4.0.0</modelVersion>
+    
+  <groupId>eden-x-lang</groupId>
+    
+  <artifactId>eden-x-lang</artifactId>
+    
+  <version>0.0.1-SNAPSHOT</version>
+    
+  <name>eden-x-lang</name>
+    
+  <dependencies>
+        
+    <dependency>
+            
+      <groupId>org.clojure</groupId>
+            
+      <artifactId>clojure</artifactId>
+            
+      <version>1.10.1</version>
+          
+    </dependency>
+        
+    <dependency>
+            
+      <groupId>org.clojure</groupId>
+            
+      <artifactId>tools.cli</artifactId>
+            
+      <version>0.4.2</version>
+          
+    </dependency>
+        
+    <dependency>
+            
+      <groupId>borkdude</groupId>
+            
+      <artifactId>sci</artifactId>
+            
+      <version>0.0.11-alpha.7</version>
+          
+    </dependency>
+        
+    <dependency>
+            
+      <groupId>lambdaisland</groupId>
+            
+      <artifactId>uri</artifactId>
+            
+      <version>1.1.0</version>
+          
+    </dependency>
+        
+    <dependency>
+            
+      <groupId>buddy</groupId>
+            
+      <artifactId>buddy-core</artifactId>
+            
+      <version>1.6.0</version>
+          
+    </dependency>
+        
+    <dependency>
+            
+      <groupId>metosin</groupId>
+            
+      <artifactId>jsonista</artifactId>
+            
+      <version>0.2.5</version>
+          
+    </dependency>
+        
+    <dependency>
+            
+      <groupId>clj-commons</groupId>
+            
+      <artifactId>clj-yaml</artifactId>
+            
+      <version>0.7.0</version>
+          
+    </dependency>
+      
+  </dependencies>
+    
+  <build>
+        
+    <sourceDirectory>src</sourceDirectory>
+      
+  </build>
+    
+  <repositories>
+        
+    <repository>
+            
+      <id>clojars</id>
+            
+      <url>https://repo.clojars.org/</url>
+          
+    </repository>
+      
+  </repositories>
+  
+</project>
