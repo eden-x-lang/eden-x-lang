@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [load-file])
   (:require [buddy.core.codecs :refer [bytes->hex]]
             [buddy.core.hash :as h]
+            [clojure.pprint :refer [pprint]]
             [clj-yaml.core :as y]
             [clojure.java.io :as io]
             [eden-x.utils :as utils]
@@ -83,17 +84,42 @@
            (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
          out)))))
 
+(def ^:private pretty-mapper
+  (j/object-mapper
+   {:pretty true}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public
 
-(defn run-string [s]
+(defn run-string-data [s]
   (sci/eval-string s (default-opts)))
 
-(defn run-file [f]
+(defn run-file-data [f]
   (binding [*base-path* (extract-base-path f)
             *running-file* f
             *running-file-absolute* (merge-path *base-path* f)]
     (run-string (extract-file-content f))))
+
+(defn run-string
+  ([s]
+   (run-string s nil))
+  ([s {:keys [compact type]}]
+   (let [r (run-string-data s)]
+     (case type
+       :edn
+       (if compact (str r) (with-out-str (pprint r)))
+       :json
+       (if compact
+         (j/write-value-as-string r)
+         (j/write-value-as-string r pretty-mapper))
+       :yaml
+       (y/generate-string r)))))
+
+(defn run-file
+  ([f]
+   (run-file f nil))
+  ([f opts]
+   (run-string (extract-file-content f) opts)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Scratch

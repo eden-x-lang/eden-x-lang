@@ -12,7 +12,7 @@
 
    [nil "--type TYPE" "edn, json or yaml"
     :default "edn"
-    :default-fn #(-> % s/lower-case keyword)
+    :default-fn #(-> % :type s/lower-case keyword)
     :parse-fn #(-> % s/lower-case keyword)
     :validate [#(#{:edn :json :yaml} %) "Must be one of edn, json or yaml"]]
 
@@ -43,7 +43,7 @@
   (str "eden-x v" (s/trim (slurp (io/resource "EDEN_X_VERSION")))))
 
 (defn ^:private validate-args [args]
-  (let [{:keys [arguments summary errors options] :as parsed} (parse-opts args cli-options)
+  (let [{:keys [summary errors options] :as parsed} (parse-opts args cli-options)
         {:keys [type compact watch hash file output eval help version]} options]
     (cond
       errors
@@ -94,10 +94,10 @@
           0)
       input-file
       ;; TODO wrap in try/catch + the other params
-      (do (println (eden/run-file input-file))
+      (do (println (eden/run-file input-file {:compact compact :type type}))
           0)
       eval-string
-      (do (println (eden/run-string eval-string))
+      (do (println (eden/run-string eval-string {:compact compact :type type}))
           0))))
 
 (defn -main
@@ -108,5 +108,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Scratch
 
-#_(main "--eval" "(+ 1 2)"
+#_(main "--type" "edn" "--file" "test/edns/function.edn"
         )
