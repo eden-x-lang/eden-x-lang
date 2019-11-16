@@ -14,7 +14,9 @@
  :aliases
  {:dev {:extra-paths ["dev" "test"]}
 
-  :test {:extra-paths ["test"]}
+  :test {:extra-paths ["test"]
+         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-554"}}
+         :main-opts ["-m" "kaocha.runner"]}
 
   :uberjar {:extra-deps {luchiniatwork/cambada {:mvn/version "1.0.1"}}
             :main-opts ["-m" "cambada.uberjar"

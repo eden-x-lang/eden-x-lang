@@ -2,9 +2,9 @@
   (:refer-clojure :exclude [load-file])
   (:require [buddy.core.codecs :refer [bytes->hex]]
             [buddy.core.hash :as h]
-            [clojure.pprint :refer [pprint]]
             [clj-yaml.core :as y]
             [clojure.java.io :as io]
+            [clojure.pprint :refer [pprint]]
             [eden-x.utils :as utils]
             [jsonista.core :as j]
             [lambdaisland.uri :as uri]
@@ -98,12 +98,12 @@
   (binding [*base-path* (extract-base-path f)
             *running-file* f
             *running-file-absolute* (merge-path *base-path* f)]
-    (run-string (extract-file-content f))))
+    (run-string-data (extract-file-content f))))
 
 (defn run-string
   ([s]
    (run-string s nil))
-  ([s {:keys [compact type]}]
+  ([s {:keys [compact type] :or {type :edn}}]
    (let [r (run-string-data s)]
      (case type
        :edn
