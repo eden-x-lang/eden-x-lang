@@ -113,7 +113,9 @@
          (j/write-value-as-string r)
          (j/write-value-as-string r pretty-mapper))
        :yaml
-       (y/generate-string r)))))
+       (if compact
+         (y/generate-string r)
+         (y/generate-string r :dumper-options {:flow-style :block}))))))
 
 (defn run-file
   ([f]

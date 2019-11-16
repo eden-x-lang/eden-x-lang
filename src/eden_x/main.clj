@@ -108,5 +108,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Scratch
 
-#_(main "--type" "edn" "--file" "test/edns/function.edn"
-        )
+#_(main "--type" "yaml" "--file" "test/edns/function.edn"
+        "--compact")
