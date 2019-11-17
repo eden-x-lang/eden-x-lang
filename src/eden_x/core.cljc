@@ -62,7 +62,7 @@
    :bindings {'load-file load-file
               'env env}})
 
-(declare ^:private run-file)
+(declare ^:private run-file-data)
 
 (defn ^:private load-file
   ([f]
@@ -78,12 +78,13 @@
                        "This is potentially a risky operation."
                        "Consider freezing this `load-file`"
                        (str "Run `$ eden-x --hash " new-absolute-path "`")]))
-     (let [out (run-file new-absolute-path)
-           sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
+     (let [out (run-file-data new-absolute-path)]
        (if hash
-         (if (= hash sha)
-           out
-           (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
+         (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
+           (if (= hash present-sha)
+             out
+             (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
+           out)
          out)))))
 
 (def ^:private pretty-mapper
