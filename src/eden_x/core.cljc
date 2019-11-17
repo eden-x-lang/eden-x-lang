@@ -17,8 +17,12 @@
 
 (def ^:dynamic *running-file-absolute* "")
 
+(def ^:dynamic *stderr* *err*)
+
+(def ^:dynamic *streaming* false)
+
 (defn ^:private local? [f]
-  (if (= *base-path* "")
+  (if *streaming*
     true
     (try
       (io/as-url f)
@@ -29,15 +33,15 @@
                false))))))
 
 (defn ^:private env [x]
-  (if (local? *base-path*)
+  (if (local? *running-file-absolute*)
     (System/getenv (name x))
-    (binding [*out* *err*]
+    (binding [*out* *stderr*]
       (utils/warning "Illegal operation from remote file"
-                     ["Path:" *running-file-absolute*
-                      (-> ["Using `env` from a remotely hosted file could lead "
-                           "to a malicious script stealing secrets from your system. "
-                           "Therefore `env` does not work in this context."]
-                          (apply str))]))))
+                     [(str "Path: " (if (not= "" *running-file-absolute*)
+                                      *running-file-absolute* "N/A"))
+                      "Using `env` from a remotely hosted file could lead "
+                      "to a malicious script stealing secrets from your system. "
+                      "Therefore `env` does not work in this context and will return nil."]))))
 
 (defn ^:private extract-base-path [f]
   (if (local? f)
@@ -70,22 +74,24 @@
   ([f hash]
    (load-file f hash nil))
   ([f hash opts]
-   (let [new-absolute-path (merge-path *base-path* f)]
-     (when (and (nil? hash)
-                (not (local? new-absolute-path)))
-       (utils/warning "Remote file being loaded transitively without freeze"
-                      ["Path:" new-absolute-path
-                       "This is potentially a risky operation."
-                       "Consider freezing this `load-file`"
-                       (str "Run `$ eden-x --hash " new-absolute-path "`")]))
-     (let [out (run-file-data new-absolute-path)]
-       (if hash
-         (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
-           (if (= hash present-sha)
-             out
-             (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
-           out)
-         out)))))
+   (binding [*streaming* false]
+     (let [new-absolute-path (merge-path *base-path* f)]
+       (when (and (nil? hash)
+                  (not (local? new-absolute-path)))
+         (binding [*out* *stderr*]
+           (utils/warning "Remote file being loaded transitively without freeze"
+                          ["Path:" new-absolute-path
+                           "This is potentially a risky operation."
+                           "Consider freezing this `load-file`"
+                           (str "Run `$ eden-x --hash " new-absolute-path "`")])))
+       (let [out (run-file-data new-absolute-path)]
+         (if hash
+           (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
+             (if (= hash present-sha)
+               out
+               (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
+             out)
+           out))))))
 
 (def ^:private pretty-mapper
   (j/object-mapper
@@ -94,37 +100,48 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public
 
-(defn run-string-data [s]
-  (sci/eval-string s (default-opts)))
+(defn run-string-data
+  ([s]
+   (binding [*streaming* true]
+     (sci/eval-string s (default-opts)))))
 
-(defn run-file-data [f]
-  (binding [*base-path* (extract-base-path f)
-            *running-file* f
-            *running-file-absolute* (merge-path *base-path* f)]
-    (run-string-data (extract-file-content f))))
+(defn run-file-data
+  ([f]
+   (binding [*base-path* (extract-base-path f)
+             *running-file* f
+             *running-file-absolute* (merge-path *base-path* f)
+             *streaming* false]
+     (sci/eval-string (extract-file-content f) (default-opts)))))
 
 (defn run-string
   ([s]
    (run-string s nil))
-  ([s {:keys [compact type] :or {type :edn}}]
-   (let [r (run-string-data s)]
-     (case type
-       :edn
-       (if compact (str r) (with-out-str (pprint r)))
-       :json
-       (if compact
-         (j/write-value-as-string r)
-         (j/write-value-as-string r pretty-mapper))
-       :yaml
-       (if compact
-         (y/generate-string r)
-         (y/generate-string r :dumper-options {:flow-style :block}))))))
+  ([s {:keys [silent compact type] :or {type :edn}}]
+   (binding [*stderr* (if silent (java.io.StringWriter.) *err*)
+             *streaming* true]
+     (let [r (run-string-data s)]
+       (case type
+         :edn
+         (if compact (str r) (with-out-str (pprint r)))
+         :json
+         (if compact
+           (j/write-value-as-string r)
+           (j/write-value-as-string r pretty-mapper))
+         :yaml
+         (if compact
+           (y/generate-string r)
+           (y/generate-string r :dumper-options {:flow-style :block})))))))
 
+;;FIXME this is wrongly calling run-string and loosing *streaming* needs fix
 (defn run-file
   ([f]
    (run-file f nil))
   ([f opts]
-   (run-string (extract-file-content f) opts)))
+   (binding [*base-path* (extract-base-path f)
+             *running-file* f
+             *running-file-absolute* (merge-path *base-path* f)
+             *streaming* false]
+     (run-string (extract-file-content f) opts))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Scratch
@@ -132,14 +149,14 @@
 (comment
   #_(run-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/load-file.edn")
 
-  #_(run-file "test/edns/load-file.edn")
+  #_(run-file-data "test/edns/load-file.edn")
 
-  (run-string-data "(env \"PATH\")")
+  #_(run-string-data "(env \"PATH\")")
   
   #_(run-file "test/edns/load-blocked.edn")
 
-  #_(run-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/env.edn")
-
+  (run-file-data "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/env.edn")
+  
   #_(i/init-env! (atom {})  nil nil nil)
 
   ;; json

@@ -18,6 +18,8 @@
 
    [nil "--compact" "Render in a compact fashion"]
 
+   [nil "--silent" "Does not show any warnings"]
+
    [nil "--watch" "Run in watch mode"]
 
    [nil "--hash" "Return the semantic hash of the provided file"]
@@ -34,7 +36,7 @@
   (->> ["\nCompiles eden-x code"
         "\nUsage: eden-x [[--type TYPE] [--hash | --watch]"
         "               [--file FILE | --eval EVAL] [--output FILE]"
-        "               [--compact] [--version]]"
+        "               [--compact] [--silent] [--version]]"
         "\nAvailable options:"
         summary]
        (s/join "\n")))
@@ -44,7 +46,7 @@
 
 (defn ^:private validate-args [args]
   (let [{:keys [summary errors options] :as parsed} (parse-opts args cli-options)
-        {:keys [type compact watch hash file output eval help version]} options]
+        {:keys [type compact silent watch hash file output eval help version]} options]
     (cond
       errors
       {:errors errors}
@@ -67,11 +69,13 @@
        :output-file output
        :watch (boolean watch)
        :compact (boolean compact)
+       :silent (boolean silent)
        :type type}
       eval
       {:eval-string eval
        :output-file output
        :compact (boolean compact)
+       :silent (boolean silent)
        :type type}
       :else
       {:show-message (help-message summary)})))
@@ -82,10 +86,11 @@
 (defn main [& args]
   (handle-pipe!)
   (let [{:keys [show-message errors
-                input-file output-file hash-file
-                eval-string
-                type compact watch]}
-        (validate-args args)]
+                input-file output-file hash-file eval-string
+                type compact silent watch]} (validate-args args)
+        opts {:compact compact
+              :silent silent
+              :type type}]
     (cond
       errors
       (do (utils/error "Argument error." errors))
@@ -94,10 +99,10 @@
           0)
       input-file
       ;; TODO wrap in try/catch + the other params
-      (do (println (eden/run-file input-file {:compact compact :type type}))
+      (do (println (eden/run-file input-file opts))
           0)
       eval-string
-      (do (println (eden/run-string eval-string {:compact compact :type type}))
+      (do (println (eden/run-string eval-string opts))
           0))))
 
 (defn -main
