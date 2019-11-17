@@ -18,13 +18,15 @@
 (def ^:dynamic *running-file-absolute* "")
 
 (defn ^:private local? [f]
-  (try
-    (io/as-url f)
-    false
-    (catch Throwable _
-      (try (-> f io/file .exists)
-           (catch Throwable _
-             false)))))
+  (if (= *base-path* "")
+    true
+    (try
+      (io/as-url f)
+      false
+      (catch Throwable _
+        (try (-> f io/file .exists)
+             (catch Throwable _
+               false))))))
 
 (defn ^:private env [x]
   (if (local? *base-path*)
@@ -127,10 +129,12 @@
 ;; Scratch
 
 (comment
-  (run-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/load-file.edn")
+  #_(run-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/load-file.edn")
 
-  (run-file "test/edns/load-file.edn")
+  #_(run-file "test/edns/load-file.edn")
 
+  (run-string-data "(env \"PATH\")")
+  
   #_(run-file "test/edns/load-blocked.edn")
 
   #_(run-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/env.edn")

@@ -5,7 +5,7 @@
             [eden-x.core :as eden]
             [jsonista.core :as j]))
 
-(deftest simple-evals
+(deftest simple-evals-and-formatting
   (let [t-edn {:a 4 :b [0 1 2] :c {:a/a 1 :a/b 2}}
         t-dirty-edn {"a" 4 "b" [0 1 2] "c" {"a/a" 1, "a/b" 2}}
         t-s-edn "{:c #:a{:a 1, :b 2}, :b [0 1 2], :a 4}\n"
@@ -41,3 +41,27 @@
     ;; string mode (yaml)
     (is (= t-s-yaml (-> e (eden/run-string {:type :yaml}))))
     (is (= t-s-c-yaml (-> e (eden/run-string {:type :yaml :compact true}))))))
+
+(deftest simple-no-eval-file-load
+  (let [r (eden/run-file-data "test/edns/simple.edn")
+        t (edn/read-string (slurp "test/edns/simple.edn"))]
+    (is (= t r))))
+
+(deftest environment-variable
+  (is (not= 0 (-> "(env \"PATH\")" eden/run-string-data count)))
+  (is (= 0 (-> "(env \"FOO_BAR\")" eden/run-string-data count)))
+  ;; now from a file
+  (let [{:keys [pwd path]} (eden/run-file-data "test/edns/env.edn")]
+    (is (not= 0 (count path)))
+    (is (not= 0 (count pwd)))))
+
+;; TODO
+#_(deftest blocked-remote-environment-variable
+    )
+
+;; TODO trap that no message is sent to stderr
+(deftest load-file
+  (let [{:keys [my-value other-def online]} (eden/run-file-data "test/edns/load-file.edn")]
+    (is (= 11 my-value))
+    (is (= 69 other-def))
+    (is (= 6 online))))

@@ -1,6 +1,9 @@
 (let [b 5
+      ;; def from another file
       from-def (load-file "./def-a.edn")
+      ;; relative path
       upper-def (load-file "../other-def.edn")
+      ;; frozen from the web
       simply-web (load-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/def-a.edn"
                             "sha256:e7f6c011776e8db7cd330b54174fd76f7d0216b612387a5ffcfb81e6f0919683")]
   {:my-value (+ from-def b)

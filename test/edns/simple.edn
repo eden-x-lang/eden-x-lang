@@ -1,7 +1,11 @@
+;; comment 1
 {:collection/users[{:user "User Name 1"
                     :email "user1@email.com"}
+                   ;; comment 2
                    {:user "User Name 2"
                     :email "user2@email.com"}]
  :types/true true
+ #_reader/out #_(inc 5)
  :types/false false
+ ;; comment 3
  :special/symbols [nil \newline \return \tab \space \u03BB]}
