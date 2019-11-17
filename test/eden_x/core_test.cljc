@@ -1,4 +1,5 @@
 (ns eden-x.core-test
+  (:refer-clojure :exclude [load-file])
   (:require [clj-yaml.core :as y]
             [clojure.edn :as edn]
             [clojure.test :refer :all]
@@ -63,5 +64,5 @@
 (deftest load-file
   (let [{:keys [my-value other-def online]} (eden/run-file-data "test/edns/load-file.edn")]
     (is (= 11 my-value))
-    (is (= 69 other-def))
+    (is (= 132 other-def))
     (is (= 6 online))))
