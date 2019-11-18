@@ -5,7 +5,6 @@
             [clj-yaml.core :as y]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
-            [eden-x.utils :as utils]
             [jsonista.core :as j]
             [lambdaisland.uri :as uri]
             [sci.core :as sci]
@@ -17,9 +16,9 @@
 
 (def ^:dynamic *running-file-absolute* "")
 
-(def ^:dynamic *stderr* *err*)
-
 (def ^:dynamic *streaming* false)
+
+(def ^:private warnings (atom []))
 
 (defn ^:private local? [f]
   (if *streaming*
@@ -35,13 +34,15 @@
 (defn ^:private env [x]
   (if (local? *running-file-absolute*)
     (System/getenv (name x))
-    (binding [*out* *stderr*]
-      (utils/warning "Illegal operation from remote file"
-                     [(str "Path: " (if (not= "" *running-file-absolute*)
-                                      *running-file-absolute* "N/A"))
-                      "Using `env` from a remotely hosted file could lead "
-                      "to a malicious script stealing secrets from your system. "
-                      "Therefore `env` does not work in this context and will return nil."]))))
+    (do (swap! warnings conj
+               {::category ::illegal-remote-operation
+                ::title "Illegal operation from remote file"
+                ::details [(str "Path: " (if (not= "" *running-file-absolute*)
+                                           *running-file-absolute* "N/A"))
+                           "Using `env` from a remotely hosted file could lead "
+                           "to a malicious script stealing secrets from your system. "
+                           "Therefore `env` does not work in this context and will return nil."]})
+        nil)))
 
 (defn ^:private extract-base-path [f]
   (if (local? f)
@@ -78,12 +79,13 @@
      (let [new-absolute-path (merge-path *base-path* f)]
        (when (and (nil? hash)
                   (not (local? new-absolute-path)))
-         (binding [*out* *stderr*]
-           (utils/warning "Remote file being loaded transitively without freeze"
-                          ["Path:" new-absolute-path
-                           "This is potentially a risky operation."
-                           "Consider freezing this `load-file`"
-                           (str "Run `$ eden-x --hash " new-absolute-path "`")])))
+         (swap! warnings conj
+                {::category ::transitive-unfrozen-load
+                 ::title "Remote file being loaded transitively without freeze"
+                 ::details [(str "Path: " new-absolute-path)
+                            "This is potentially a risky operation."
+                            "Consider freezing this `load-file`"
+                            (str "Run `$ eden-x --hash --file " new-absolute-path "`")]}))
        (let [out (run-file-data new-absolute-path)]
          (if hash
            (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
@@ -103,6 +105,7 @@
 (defn run-string-data
   ([s]
    (binding [*streaming* true]
+     (reset! warnings [])
      (sci/eval-string s (default-opts)))))
 
 (defn run-file-data
@@ -111,14 +114,14 @@
              *running-file* f
              *running-file-absolute* (merge-path *base-path* f)
              *streaming* false]
+     (reset! warnings [])
      (sci/eval-string (extract-file-content f) (default-opts)))))
 
 (defn run-string
   ([s]
    (run-string s nil))
   ([s {:keys [silent compact type] :or {type :edn}}]
-   (binding [*stderr* (if silent (java.io.StringWriter.) *err*)
-             *streaming* true]
+   (binding [*streaming* true]
      (let [r (run-string-data s)]
        (case type
          :edn
@@ -142,6 +145,9 @@
              *running-file-absolute* (merge-path *base-path* f)
              *streaming* false]
      (run-string (extract-file-content f) opts))))
+
+(defn inspect-warnings []
+  @warnings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Scratch

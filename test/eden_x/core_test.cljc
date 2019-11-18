@@ -60,21 +60,23 @@
     (is (not= 0 (count pwd)))))
 
 (deftest blocked-remote-environment-variable
-  (binding [eden/*stderr* *out*]
-    (let [r (with-out-str
-              (let [{:keys [pwd path]} (eden/run-file-data (str base-url "test/edns/env.edn"))]
-                (is (nil? path))
-                (is (nil? pwd))))]
-      (println r)
-      (is (not= "" r)))))
+  (let [{:keys [pwd path]} (eden/run-file-data (str base-url "test/edns/env.edn"))
+        warnings (eden/inspect-warnings)]
+    (is (nil? path))
+    (is (nil? pwd))
+    (is (= 2 (count warnings)))
+    (is (every? #(= ::eden/illegal-remote-operation
+                    (::eden/category %))
+                warnings))
+    (is (every? #(= "Illegal operation from remote file"
+                    (::eden/title %))
+                warnings))))
 
 (deftest load-file
-  (binding [eden/*stderr* *out*]
-    (is (= ""
-           (with-out-str
-             (let [{:keys [my-value
-                           other-def
-                           online]} (eden/run-file-data "test/edns/load-file.edn")]
-               (is (= 11 my-value))
-               (is (= 132 other-def))
-               (is (= 6 online))))))))
+  (let [{:keys [my-value
+                other-def
+                online]} (eden/run-file-data "test/edns/load-file.edn")]
+    (is (= 11 my-value))
+    (is (= 132 other-def))
+    (is (= 6 online))
+    (is (= 0 (count (eden/inspect-warnings))))))
