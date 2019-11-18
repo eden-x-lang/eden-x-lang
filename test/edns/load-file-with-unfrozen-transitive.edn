@@ -1,0 +1,1 @@
+{:online (load-file "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/def-a.edn")}

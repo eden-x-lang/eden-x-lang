@@ -46,12 +46,12 @@
     (is (= t-s-yaml (-> e (eden/run-string {:type :yaml}))))
     (is (= t-s-c-yaml (-> e (eden/run-string {:type :yaml :compact true}))))))
 
-(deftest simple-no-eval-file-load
+(deftest simple-file-should-load
   (let [r (eden/run-file-data "test/edns/simple.edn")
         t (edn/read-string (slurp "test/edns/simple.edn"))]
     (is (= t r))))
 
-(deftest environment-variable
+(deftest env-should-work
   (is (not= 0 (-> "(env \"PATH\")" eden/run-string-data count)))
   (is (= 0 (-> "(env \"FOO_BAR\")" eden/run-string-data count)))
   ;; now from a file
@@ -59,7 +59,7 @@
     (is (not= 0 (count path)))
     (is (not= 0 (count pwd)))))
 
-(deftest blocked-remote-environment-variable
+(deftest remote-env-should-warn-and-return-nil
   (let [{:keys [pwd path]} (eden/run-file-data (str base-url "test/edns/env.edn"))
         warnings (eden/inspect-warnings)]
     (is (nil? path))
@@ -72,11 +72,39 @@
                     (::eden/title %))
                 warnings))))
 
-(deftest load-file
+(deftest load-file-without-transitive
+  (let [{:keys [my-value
+                other-def]
+         :as r} (eden/run-file-data "test/edns/load-file-without-remote-transitive.edn")]
+    (is (= 11 my-value))
+    (is (= 132 other-def))
+    (is (= #{:other-def :my-value} (-> r keys set)))
+    (is (= 0 (count (eden/inspect-warnings))))))
+
+(deftest load-file-with-frozen-transtive
   (let [{:keys [my-value
                 other-def
-                online]} (eden/run-file-data "test/edns/load-file.edn")]
+                online]
+         :as r} (eden/run-file-data "test/edns/load-file-with-frozen-transitive.edn")]
     (is (= 11 my-value))
     (is (= 132 other-def))
     (is (= 6 online))
+    (is (= #{:my-value :other-def :online} (-> r keys set)))
     (is (= 0 (count (eden/inspect-warnings))))))
+
+(deftest load-file-unfrozen-transitive-should-warn
+  (let [{:keys [online]
+         :as r} (eden/run-file-data "test/edns/load-file-with-unfrozen-transitive.edn")
+        warnings (eden/inspect-warnings)]
+    (is (= 6 online))
+    (is (= #{:online} (-> r keys set)))
+    (is (= 1 (count warnings)))
+    (is (= ::eden/transitive-unfrozen-load
+           (-> warnings first ::eden/category)))
+    (is (= "Remote file being loaded transitively without freeze"
+           (-> warnings first ::eden/title)))))
+
+;; TODO should warn for env and transitive and block
+#_(deftest load-file-unfrozen-transitive-env-should-warn-and-nil-env)
+
+#_(deftest load-file-wrong-freeze-hash-should-throw)

@@ -1,0 +1,7 @@
+(let [b 5
+      ;; def from another file
+      from-def (load-file "./def-a.edn")
+      ;; relative path
+      upper-def (load-file "../other-def.edn")]
+  {:my-value (+ from-def b)
+   :other-def (* 2 upper-def)})

@@ -18,7 +18,7 @@
 
 (def ^:dynamic *streaming* false)
 
-(def ^:private warnings (atom []))
+(def environ (atom {:warnings []}))
 
 (defn ^:private local? [f]
   (if *streaming*
@@ -34,15 +34,16 @@
 (defn ^:private env [x]
   (if (local? *running-file-absolute*)
     (System/getenv (name x))
-    (do (swap! warnings conj
-               {::category ::illegal-remote-operation
-                ::title "Illegal operation from remote file"
-                ::details [(str "Path: " (if (not= "" *running-file-absolute*)
-                                           *running-file-absolute* "N/A"))
-                           "Using `env` from a remotely hosted file could lead "
-                           "to a malicious script stealing secrets from your system. "
-                           "Therefore `env` does not work in this context and will return nil."]})
-        nil)))
+    (do
+      (swap! environ update-in [:warnings] conj
+             {::category ::illegal-remote-operation
+              ::title "Illegal operation from remote file"
+              ::details [(str "Path: " (if (not= "" *running-file-absolute*)
+                                         *running-file-absolute* "N/A"))
+                         "Using `env` from a remotely hosted file could lead "
+                         "to a malicious script stealing secrets from your system. "
+                         "Therefore `env` does not work in this context and will return nil."]})
+      nil)))
 
 (defn ^:private extract-base-path [f]
   (if (local? f)
@@ -62,13 +63,16 @@
 (declare ^:private load-file)
 
 (defn ^:private default-opts []
+  (swap! environ assoc :warnings [])
   {:deny ['require]
+   :environment environ
    ;;:realize-max 1e7 ;; FIXME: it would be great to have it but loop/recur breaks on SCI
    :bindings {'load-file load-file
               'env env}})
 
 (declare ^:private run-file-data)
 
+;; FIXME the bug here is that the inner run-file-data will clear the state of warnings
 (defn ^:private load-file
   ([f]
    (load-file f nil nil))
@@ -79,21 +83,23 @@
      (let [new-absolute-path (merge-path *base-path* f)]
        (when (and (nil? hash)
                   (not (local? new-absolute-path)))
-         (swap! warnings conj
+         (swap! environ update-in [:warnings] conj
                 {::category ::transitive-unfrozen-load
                  ::title "Remote file being loaded transitively without freeze"
                  ::details [(str "Path: " new-absolute-path)
                             "This is potentially a risky operation."
                             "Consider freezing this `load-file`"
                             (str "Run `$ eden-x --hash --file " new-absolute-path "`")]}))
-       (let [out (run-file-data new-absolute-path)]
-         (if hash
-           (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
-             (if (= hash present-sha)
-               out
-               (throw (ex-info "Semantic mismatch of frozen hash." {:path new-absolute-path})))
-             out)
-           out))))))
+       #_(let [out (run-file-data new-absolute-path)]
+           (if hash
+             (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
+               (if (= hash present-sha)
+                 out
+                 (throw (ex-info "Semantic mismatch of frozen hash."
+                                 {::category ::semantic-mistmatch
+                                  ::path new-absolute-path})))
+               out)
+             out))))))
 
 (def ^:private pretty-mapper
   (j/object-mapper
@@ -105,7 +111,6 @@
 (defn run-string-data
   ([s]
    (binding [*streaming* true]
-     (reset! warnings [])
      (sci/eval-string s (default-opts)))))
 
 (defn run-file-data
@@ -114,9 +119,10 @@
              *running-file* f
              *running-file-absolute* (merge-path *base-path* f)
              *streaming* false]
-     (reset! warnings [])
      (sci/eval-string (extract-file-content f) (default-opts)))))
 
+;; FIXME consider extracting away
+;; FIXME missing reset warnings
 (defn run-string
   ([s]
    (run-string s nil))
@@ -135,7 +141,9 @@
            (y/generate-string r)
            (y/generate-string r :dumper-options {:flow-style :block})))))))
 
-;;FIXME this is wrongly calling run-string and loosing *streaming* needs fix
+;; FIXME consider extracting away
+;; FIXME missing reset warnings
+;; FIXME this is wrongly calling run-string and loosing *streaming* needs fix
 (defn run-file
   ([f]
    (run-file f nil))
@@ -147,7 +155,7 @@
      (run-string (extract-file-content f) opts))))
 
 (defn inspect-warnings []
-  @warnings)
+  (:warnings @environ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Scratch
