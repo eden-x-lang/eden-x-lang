@@ -20,6 +20,12 @@
 
 (def environ (atom {:warnings []}))
 
+(defn ^:private reset-environ! []
+  (swap! environ assoc :warnings []))
+
+(defn ^:private conj-warning! [warning]
+  (swap! environ update-in [:warnings] conj warning))
+
 (defn ^:private local? [f]
   (if *streaming*
     true
@@ -35,14 +41,14 @@
   (if (local? *running-file-absolute*)
     (System/getenv (name x))
     (do
-      (swap! environ update-in [:warnings] conj
-             {::category ::illegal-remote-operation
-              ::title "Illegal operation from remote file"
-              ::details [(str "Path: " (if (not= "" *running-file-absolute*)
-                                         *running-file-absolute* "N/A"))
-                         "Using `env` from a remotely hosted file could lead "
-                         "to a malicious script stealing secrets from your system. "
-                         "Therefore `env` does not work in this context and will return nil."]})
+      (conj-warning!
+       {::category ::illegal-remote-operation
+        ::title "Illegal operation from remote file"
+        ::details [(str "Path: " (if (not= "" *running-file-absolute*)
+                                   *running-file-absolute* "N/A"))
+                   "Using `env` from a remotely hosted file could lead "
+                   "to a malicious script stealing secrets from your system. "
+                   "Therefore `env` does not work in this context and will return nil."]})
       nil)))
 
 (defn ^:private extract-base-path [f]
@@ -63,14 +69,18 @@
 (declare ^:private load-file)
 
 (defn ^:private default-opts []
-  (swap! environ assoc :warnings [])
   {:deny ['require]
-   :environment environ
    ;;:realize-max 1e7 ;; FIXME: it would be great to have it but loop/recur breaks on SCI
    :bindings {'load-file load-file
               'env env}})
 
-(declare ^:private run-file-data)
+(defn ^:private spawn-and-run-file
+  ([f]
+   (binding [*base-path* (extract-base-path f)
+             *running-file* f
+             *running-file-absolute* (merge-path *base-path* f)
+             *streaming* false]
+     (sci/eval-string (extract-file-content f) (default-opts)))))
 
 ;; FIXME the bug here is that the inner run-file-data will clear the state of warnings
 (defn ^:private load-file
@@ -83,23 +93,22 @@
      (let [new-absolute-path (merge-path *base-path* f)]
        (when (and (nil? hash)
                   (not (local? new-absolute-path)))
-         (swap! environ update-in [:warnings] conj
-                {::category ::transitive-unfrozen-load
-                 ::title "Remote file being loaded transitively without freeze"
-                 ::details [(str "Path: " new-absolute-path)
-                            "This is potentially a risky operation."
-                            "Consider freezing this `load-file`"
-                            (str "Run `$ eden-x --hash --file " new-absolute-path "`")]}))
-       #_(let [out (run-file-data new-absolute-path)]
-           (if hash
-             (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
-               (if (= hash present-sha)
-                 out
-                 (throw (ex-info "Semantic mismatch of frozen hash."
-                                 {::category ::semantic-mistmatch
-                                  ::path new-absolute-path})))
-               out)
-             out))))))
+         (conj-warning! {::category ::transitive-unfrozen-load
+                         ::title "Remote file being loaded transitively without freeze"
+                         ::details [(str "Path: " new-absolute-path)
+                                    "This is potentially a risky operation."
+                                    "Consider freezing this `load-file`"
+                                    (str "Run `$ eden-x --hash --file " new-absolute-path "`")]}))
+       (let [out (spawn-and-run-file new-absolute-path)]
+         (if hash
+           (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
+             (if (= hash present-sha)
+               out
+               (throw (ex-info "Semantic mismatch of frozen hash."
+                               {::category ::semantic-mistmatch
+                                ::path new-absolute-path})))
+             out)
+           out))))))
 
 (def ^:private pretty-mapper
   (j/object-mapper
@@ -110,16 +119,14 @@
 
 (defn run-string-data
   ([s]
+   (reset-environ!)
    (binding [*streaming* true]
      (sci/eval-string s (default-opts)))))
 
 (defn run-file-data
   ([f]
-   (binding [*base-path* (extract-base-path f)
-             *running-file* f
-             *running-file-absolute* (merge-path *base-path* f)
-             *streaming* false]
-     (sci/eval-string (extract-file-content f) (default-opts)))))
+   (reset-environ!)
+   (spawn-and-run-file f)))
 
 ;; FIXME consider extracting away
 ;; FIXME missing reset warnings

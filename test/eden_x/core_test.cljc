@@ -108,3 +108,5 @@
 #_(deftest load-file-unfrozen-transitive-env-should-warn-and-nil-env)
 
 #_(deftest load-file-wrong-freeze-hash-should-throw)
+
+#_(deftest make-sure-load-files-are-isolated)
