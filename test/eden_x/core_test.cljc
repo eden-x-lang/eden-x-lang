@@ -4,7 +4,8 @@
             [clojure.edn :as edn]
             [clojure.test :refer :all]
             [eden-x.core :as eden]
-            [jsonista.core :as j]))
+            [jsonista.core :as j])
+  (:import (clojure.lang ExceptionInfo)))
 
 (def ^:private base-url
   "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/")
@@ -109,4 +110,13 @@
 
 #_(deftest load-file-wrong-freeze-hash-should-throw)
 
-#_(deftest make-sure-load-files-are-isolated)
+(deftest make-sure-load-files-are-isolated
+  (is (thrown-with-msg?
+       ExceptionInfo #"Could not resolve symbol"
+       (eden/run-string-data "(def a 10) {:out (load-file \"test/edns/undefined.edn\")}"))))
+
+#_(deftest should-throw-on-missing-local-file)
+
+#_(deftest should-throw-on-missing-remote-file)
+
+#_(deftest should-throw-on-invalid-script)
