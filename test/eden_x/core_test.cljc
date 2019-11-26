@@ -5,7 +5,8 @@
             [clojure.test :refer :all]
             [eden-x.core :as eden]
             [jsonista.core :as j])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import (clojure.lang ExceptionInfo)
+           (java.io FileNotFoundException)))
 
 (def ^:private base-url
   "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/")
@@ -73,7 +74,7 @@
                     (::eden/title %))
                 warnings))))
 
-(deftest load-file-without-transitive
+(deftest ^:failing load-file-without-transitive
   (let [{:keys [my-value
                 other-def]
          :as r} (eden/run-file-data "test/edns/load-file-without-remote-transitive.edn")]
@@ -82,7 +83,7 @@
     (is (= #{:other-def :my-value} (-> r keys set)))
     (is (= 0 (count (eden/inspect-warnings))))))
 
-(deftest load-file-with-frozen-transtive
+(deftest ^:failing load-file-with-frozen-transtive
   (let [{:keys [my-value
                 other-def
                 online]
@@ -105,18 +106,47 @@
     (is (= "Remote file being loaded transitively without freeze"
            (-> warnings first ::eden/title)))))
 
-;; TODO should warn for env and transitive and block
-#_(deftest load-file-unfrozen-transitive-env-should-warn-and-nil-env)
+(deftest ^:failing load-file-wrong-freeze-hash-should-throw
+  (is (thrown-with-msg?
+       ExceptionInfo #"Semantic mismatch of frozen hash"
+       (eden/run-file-data "test/edns/load-file-with-wrong-transitive.edn")))
+  (try
+    (eden/run-file-data "test/edns/load-file-with-wrong-transitive.edn")
+    (catch Throwable ex
+      (is (= ::eden/semantic-mistmatch
+             (-> ex ex-data ::eden/category)))
+      (is (= "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/def-a.edn"
+             (-> ex ex-data ::eden/path))))))
 
-#_(deftest load-file-wrong-freeze-hash-should-throw)
+(deftest load-file-unfrozen-transitive-env-should-warn-for-both
+  (let [{:keys [pwd]
+         :as r} (eden/run-file-data "test/edns/load-file-with-unfrozen-transitive-env.edn")
+        warnings (eden/inspect-warnings)]
+    (is (nil? pwd))
+    (is (= #{:pwd} (-> r keys set)))
+    (is (= 3 (count warnings)))
+    (let [transitive-warnings (filter #(= (::eden/category %) ::eden/transitive-unfrozen-load)
+                                      warnings)
+          illegal-warnings (filter #(= (::eden/category %) ::eden/illegal-remote-operation)
+                                   warnings)]
+      (is (= 1 (count transitive-warnings)))
+      (is (= 2 (count illegal-warnings)))
+      (is (every? #(= "Remote file being loaded transitively without freeze"
+                      (::eden/title %)) transitive-warnings))
+      (is (every? #(= "Illegal operation from remote file"
+                      (::eden/title %)) illegal-warnings)))))
 
 (deftest make-sure-load-files-are-isolated
   (is (thrown-with-msg?
        ExceptionInfo #"Could not resolve symbol"
        (eden/run-string-data "(def a 10) {:out (load-file \"test/edns/undefined.edn\")}"))))
 
-#_(deftest should-throw-on-missing-local-file)
+(deftest should-throw-on-missing-local-file
+  (is (thrown? FileNotFoundException
+               (eden/run-file-data "test/edns/non-existing.edn"))))
 
-#_(deftest should-throw-on-missing-remote-file)
+(deftest should-throw-on-missing-remote-file
+  (is (thrown? FileNotFoundException
+               (eden/run-file-data (str base-url "test/edns/non-existing.edn")))))
 
 #_(deftest should-throw-on-invalid-script)

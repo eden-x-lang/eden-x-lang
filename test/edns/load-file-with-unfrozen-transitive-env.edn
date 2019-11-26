@@ -1,0 +1,3 @@
+{:pwd (-> "https://raw.githubusercontent.com/eden-x-lang/eden-x-lang/master/test/edns/env.edn"
+          load-file
+          :pwd)}
