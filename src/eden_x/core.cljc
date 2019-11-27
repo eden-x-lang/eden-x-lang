@@ -33,10 +33,7 @@
       (io/as-url f)
       false
       (catch Throwable _
-        (println "qui" f)
-        (if (-> f io/file .exists)
-          true
-          (throw (java.io.FileNotFoundException. f)))))))
+        true))))
 
 (defn ^:private env [x]
   (if (local? *running-file-absolute*)

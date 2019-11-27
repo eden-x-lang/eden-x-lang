@@ -74,7 +74,7 @@
                     (::eden/title %))
                 warnings))))
 
-(deftest ^:failing load-file-without-transitive
+(deftest load-file-without-transitive
   (let [{:keys [my-value
                 other-def]
          :as r} (eden/run-file-data "test/edns/load-file-without-remote-transitive.edn")]
@@ -83,7 +83,7 @@
     (is (= #{:other-def :my-value} (-> r keys set)))
     (is (= 0 (count (eden/inspect-warnings))))))
 
-(deftest ^:failing load-file-with-frozen-transtive
+(deftest load-file-with-frozen-transtive
   (let [{:keys [my-value
                 other-def
                 online]
@@ -106,7 +106,7 @@
     (is (= "Remote file being loaded transitively without freeze"
            (-> warnings first ::eden/title)))))
 
-(deftest ^:failing load-file-wrong-freeze-hash-should-throw
+(deftest load-file-wrong-freeze-hash-should-throw
   (is (thrown-with-msg?
        ExceptionInfo #"Semantic mismatch of frozen hash"
        (eden/run-file-data "test/edns/load-file-with-wrong-transitive.edn")))
