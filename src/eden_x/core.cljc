@@ -8,7 +8,8 @@
             [jsonista.core :as j]
             [lambdaisland.uri :as uri]
             [sci.core :as sci]
-            [sci.impl.interpreter :as i]))
+            [sci.impl.interpreter :as i])
+  (:import (clojure.lang ExceptionInfo)))
 
 (def ^:dynamic *base-path* "")
 
@@ -78,9 +79,18 @@
              *running-file* f
              *running-file-absolute* (merge-path *base-path* f)
              *streaming* false]
-     (sci/eval-string (extract-file-content f) (default-opts)))))
+     (try
+       (sci/eval-string (extract-file-content f) (default-opts))
+       (catch ExceptionInfo ex
+         (let [{:keys [row col type ::category]} (ex-data ex)]
+           (cond
+             category (throw ex)
+             (= :sci/error type) (throw (ex-info (.getMessage ex)
+                                                 {::category ::code-error
+                                                  ::file f
+                                                  ::row row
+                                                  ::col col})))))))))
 
-;; FIXME the bug here is that the inner run-file-data will clear the state of warnings
 (defn ^:private load-file
   ([f]
    (load-file f nil nil))
@@ -115,12 +125,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public
 
+;; FIXME this function name is lame
 (defn run-string-data
   ([s]
    (reset-environ!)
    (binding [*streaming* true]
-     (sci/eval-string s (default-opts)))))
+     (try
+       (sci/eval-string s (default-opts))
+       (catch Throwable ex
+         (let [{:keys [row col]} (ex-data ex)]
+           (throw (ex-info (.getMessage ex)
+                           {::category ::code-error
+                            ::row row
+                            ::col col}))))))))
 
+;; FIXME this function name is lame
 (defn run-file-data
   ([f]
    (reset-environ!)

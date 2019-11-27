@@ -9,6 +9,8 @@
   (eden/run-file-data "test/edns/load-file-without-remote-transitive.edn")
   
   (eden/run-file-data "test/edns/load-file-with-unfrozen-transitive-env.edne")
+
+  (eden/run-string "\nbar")
   
   (count (eden/inspect-warnings))
 

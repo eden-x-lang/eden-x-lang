@@ -149,4 +149,49 @@
   (is (thrown? FileNotFoundException
                (eden/run-file-data (str base-url "test/edns/non-existing.edn")))))
 
-#_(deftest should-throw-on-invalid-script)
+;; FIXME last case is failing
+(deftest ^:failing should-throw-on-invalid-script
+  (let [test-set [["foo" #"Could not resolve symbol: foo" 1 1]
+                  ["\n\n bar" #"Could not resolve symbol: bar" 3 2]
+                  ["(def a 1\n\n\n" #"EOF while reading, expected \) to match \(" 3 1]]]
+    (doseq [[script re trow tcol] test-set]
+      (try
+        (eden/run-string-data script)
+        (catch Throwable ex
+          (is (re-find re (.getMessage ex)))
+          (let [{:keys [::eden/category
+                        ::eden/row
+                        ::eden/col]} (ex-data ex)]
+            (is (= ::eden/code-error category))
+            (is (= trow row))
+            (is (= tcol col)))))))
+
+  (try
+    (eden/run-file-data "test/edns/invalid-script.edn")
+    (catch Throwable ex
+      (is (re-find #"Could not resolve symbol: foo" (.getMessage ex)))
+      (let [{:keys [::eden/file
+                    ::eden/category
+                    ::eden/row
+                    ::eden/col]} (ex-data ex)]
+        (is (= "test/edns/invalid-script.edn" file))
+        (is (= ::eden/code-error category))
+        (is (= 1 row))
+        (is (= 1 col)))))
+
+  (try
+    (eden/run-file-data "test/edns/invalid-script-load.edn")
+    (catch Throwable ex
+      (is (re-find #"Could not resolve symbol: foo" (.getMessage ex)))
+      (let [{:keys [::eden/file
+                    ::eden/breadcrumb
+                    ::eden/category
+                    ::eden/row
+                    ::eden/col]} (ex-data ex)]
+        (is (= "test/edns/invalid-script.edn" file))
+        (is (= ["test/edns/invalid-script-load.edn"
+                "test/edns/invalid-script.edn"]
+               breadcrumb))
+        (is (= ::eden/code-error category))
+        (is (= 1 row))
+        (is (= 1 col))))))
