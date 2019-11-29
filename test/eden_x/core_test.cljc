@@ -184,14 +184,31 @@
     (catch Throwable ex
       (is (re-find #"Could not resolve symbol: foo" (.getMessage ex)))
       (let [{:keys [::eden/file
-                    ::eden/breadcrumb
+                    ::eden/load-breadcrumb
                     ::eden/category
                     ::eden/row
                     ::eden/col]} (ex-data ex)]
-        (is (= "test/edns/invalid-script.edn" file))
+        (is (= "./invalid-script.edn" file))
         (is (= ["test/edns/invalid-script-load.edn"
-                "test/edns/invalid-script.edn"]
-               breadcrumb))
+                "./invalid-script.edn"]
+               load-breadcrumb))
+        (is (= ::eden/code-error category))
+        (is (= 1 row))
+        (is (= 1 col)))))
+
+  (try
+    (eden/run-file-data (str base-url "test/edns/invalid-script-load.edn"))
+    (catch Throwable ex
+      (is (re-find #"Could not resolve symbol: foo" (.getMessage ex)))
+      (let [{:keys [::eden/file
+                    ::eden/load-breadcrumb
+                    ::eden/category
+                    ::eden/row
+                    ::eden/col]} (ex-data ex)]
+        (is (= "./invalid-script.edn" file))
+        (is (= [(str base-url "test/edns/invalid-script-load.edn")
+                "./invalid-script.edn"]
+               load-breadcrumb))
         (is (= ::eden/code-error category))
         (is (= 1 row))
         (is (= 1 col))))))

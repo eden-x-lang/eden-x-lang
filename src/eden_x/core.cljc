@@ -13,6 +13,8 @@
 
 (def ^:dynamic *base-path* "")
 
+(def ^:dynamic *load-breadcrumb* [])
+
 (def ^:dynamic *running-file* "")
 
 (def ^:dynamic *running-file-absolute* "")
@@ -76,11 +78,13 @@
 (defn ^:private spawn-and-run-file
   ([f]
    (binding [*base-path* (extract-base-path f)
+             *load-breadcrumb* (conj *load-breadcrumb* f)
              *running-file* f
              *running-file-absolute* (merge-path *base-path* f)
              *streaming* false]
      (try
-       (sci/eval-string (extract-file-content f) (default-opts))
+       (sci/eval-string (extract-file-content *running-file-absolute*)
+                        (default-opts))
        (catch ExceptionInfo ex
          (let [{:keys [row col type ::category]} (ex-data ex)]
            (cond
@@ -88,6 +92,7 @@
              (= :sci/error type) (throw (ex-info (.getMessage ex)
                                                  {::category ::code-error
                                                   ::file f
+                                                  ::load-breadcrumb *load-breadcrumb*
                                                   ::row row
                                                   ::col col})))))))))
 
@@ -107,7 +112,7 @@
                                     "This is potentially a risky operation."
                                     "Consider freezing this `load-file`"
                                     (str "Run `$ eden-x --hash --file " new-absolute-path "`")]}))
-       (let [out (spawn-and-run-file new-absolute-path)]
+       (let [out (spawn-and-run-file f)]
          (if hash
            (let [present-sha (->> out str h/sha256 bytes->hex (str "sha256:"))]
              (if (= hash present-sha)
