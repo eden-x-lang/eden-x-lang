@@ -149,8 +149,7 @@
   (is (thrown? FileNotFoundException
                (eden/run-file-data (str base-url "test/edns/non-existing.edn")))))
 
-;; FIXME last case is failing
-(deftest ^:failing should-throw-on-invalid-script
+(deftest should-throw-on-invalid-script
   (let [test-set [["foo" #"Could not resolve symbol: foo" 1 1]
                   ["\n\n bar" #"Could not resolve symbol: bar" 3 2]
                   ["(def a 1\n\n\n" #"EOF while reading, expected \) to match \(" 3 1]]]
