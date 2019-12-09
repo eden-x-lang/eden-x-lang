@@ -19,28 +19,46 @@
   (count (eden/inspect-warnings))
 
   (eden/inspect-warnings)
+
+
+  #_(let [f1 (eden/run-string-data "(def a 1) #(str \"4\")")
+          f2 (eden/run-string-data "(def a 1) #(str \"4\")")]
+      (= f1 f2)
+      (meta f2))
+
+  (clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
+                                      '#(str "4")))
+
+  (clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
+                                      '(let [f1 #(str "4")
+                                             f2 (fn [] "5")]
+                                         (fn [] [(f1) (f2)]))))
+
+  (clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
+                                      '(def f1 "")))
+
+  (clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
+                                      '(str a 5)))
+
+  (println (clojure.repl/source-fn 'str))
+
+  (p/parse-string "(def a 4) (println a)")
+
+  (let [reader (r/indexing-push-back-reader (r/string-push-back-reader "(def a 4) (str a 5)"))]
+    (p/parse-next reader nil {})
+    (p/parse-next reader nil {}))
+
+  (i/eval-string "(def a 4) (def b 5) (defn f [& args]) (let [c 6] (f a b c))")
+  
+  (i/eval-string "(def a 4) (fn [] (str \"hello\" a))")
+
+  (clojure.pprint/pprint (meta (i/eval-string "
+(def a 4)
+(defn b [c] c)
+(fn
+  ([] (str \"hello\" a))
+  ([n] (when true \"\") n)
+  ([y j] (b (str y j)))
+  ([& args] (count args)))")))
+
   )
-
-
-#_(let [f1 (eden/run-string-data "(def a 1) #(str \"4\")")
-        f2 (eden/run-string-data "(def a 1) #(str \"4\")")]
-    (= f1 f2)
-    (meta f2))
-
-(clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
-                                    '#(str "4")))
-
-(clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
-                                    '(let [f1 #(str "4")
-                                           f2 (fn [] "5")]
-                                       (fn [] [(f1) (f2)]))))
-
-(clojure.pprint/pprint (ana/analyze (i/opts->ctx nil)
-                                    '(def f1 "")))
-
-(println (clojure.repl/source-fn 'str))
-
-(p/parse-string "(def a 4) (println a)")
-
-(let [reader (r/indexing-push-back-reader (r/string-push-back-reader "(def a 4) (str a 5)"))]
-  (p/parse-next reader nil {}))

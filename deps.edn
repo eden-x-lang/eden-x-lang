@@ -1,8 +1,9 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "sci/src"]
 
  :deps {org.clojure/clojure     {:mvn/version "1.10.1"}
         org.clojure/tools.cli   {:mvn/version "0.4.2"}
-        borkdude/sci            {:mvn/version "0.0.11-alpha.14"}
+        #_borkdude/sci            #_{:mvn/version "0.0.11-alpha.14"}
+        borkdude/edamame {:mvn/version "0.0.9-alpha.2"}
         lambdaisland/uri        {:mvn/version "1.1.0"}
         buddy/buddy-core        {:mvn/version "1.6.0"}
         metosin/jsonista        {:mvn/version "0.2.5"}
