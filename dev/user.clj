@@ -54,7 +54,7 @@
 
   (clojure.pprint/pprint (meta (i/eval-string "
 (def a 4)
-(defn b [c] c)
+(defn b ([c] c) ([c d] (* c d)))
 (fn
   ([] (str \"hello\" a))
   ([n] (when true \"\") n)
